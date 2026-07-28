@@ -1,4 +1,4 @@
-import sys
+import sys, subprocess, platform
 
 processes = {
     # Name: {processing time: minutes (int), downtime: minutes (int), defect rate: as a decimal, daily: capacity}
@@ -19,13 +19,12 @@ bottleneck = ""
 profitPerBike = 160.0
 dailyProfit = 0.0
 
-def initializeVariables():
-    pass
 
 def calculateStationCapacity():
     for i in processes:
         pt = processes[i]["processing time"]
         capacity = workingMinutes/pt
+        capacity *= (1-processes[i]["downtime"])
         processes[i]["daily"] = capacity
 
 def calculateSystemCapacity():
@@ -47,10 +46,10 @@ def calculateProcessYield():
     for i in processes:
         productionMultiplier *= (1-processes[i]["defect rate"])
         individualProductionMultipler = 1 * (1-processes[i]["defect rate"]) * (1-processes[i]["downtime"])
-
         processes[i]["yield"] = processes[i]["daily"] * individualProductionMultipler
-
         individualProductionMultipler = 1.0
+    print("syscap " + str(systemCapacity))
+    print("productionMultiplier" + str(productionMultiplier))
     systemYield = systemCapacity * productionMultiplier
     
 def calculateBottleneck():
@@ -81,6 +80,46 @@ def calculateIdleCapacity():
     for i in processes:
         processes[i]["idle"] = processes[i]["daily"]-systemCapacity
 
+def clearConsole():
+    if platform.system() == "Windows":
+        subprocess.run("cls", shell=True)
+    else:
+        subprocess.run("clear", shell=True)
+
+def createMenu():
+    print("=====================================")
+    print("Velocity Cycles Manufacturing Simulator")
+    print("=====================================")
+    print("Current Year: " + str(2026))
+    print("Customer Demand: " + str(55) + "bikes/day")
+    print("Production Capacity: " + str(55) + "bikes/day")
+    print("Current Bottleneck: ______")
+    print("Budget Remaining: $30,000")
+    print("   1. View Factory")
+    print("   2. Modify Factory")
+    print("   3. Invest in Improvements")
+    print("   4. Run Future Simulation")
+    print("   5. View Financial Report")
+    print("   6. Exit")
+
+def viewFactory():
+    pass
+
+def modifyFactory():
+    pass
+
+def investImprove():
+    pass
+
+def runSimulation():
+    pass
+
+def ViewFinancials():
+    pass
+
+def exit():
+    pass
+
 
 
 
@@ -98,7 +137,10 @@ print()
 calculateIdleCapacity()
 print()
 print(processes)
-
+print()
+calculateDailyProfit()
+print("daily profit" + str(dailyProfit) + " daily sales" + str(systemYield) + " systemYield " + str(systemYield))
+createMenu()
 
 
 
