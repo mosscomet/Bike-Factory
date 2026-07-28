@@ -48,17 +48,18 @@ def calculateProcessYield():
         individualProductionMultipler = 1 * (1-processes[i]["defect rate"]) * (1-processes[i]["downtime"])
         processes[i]["yield"] = processes[i]["daily"] * individualProductionMultipler
         individualProductionMultipler = 1.0
-    print("syscap " + str(systemCapacity))
-    print("productionMultiplier" + str(productionMultiplier))
+    # print(f"syscap {systemCapacity}")
+    # print(f"productionMultiplier {productionMultiplier}")
     systemYield = systemCapacity * productionMultiplier
     
 def calculateBottleneck():
     global bottleneck
     calculateSystemCapacity()
+    listOfProcesses = list(processes.keys())
 
-    for i in processes:
-        if processes[i]["daily"] <= systemCapacity:
-            bottleneck = processes[i]
+    for processName in processes:
+        if processes[processName]["daily"] <= systemCapacity:
+            bottleneck = processName
             break
 
 def calculateDailyProfit():
@@ -87,59 +88,125 @@ def clearConsole():
         subprocess.run("clear", shell=True)
 
 def createMenu():
-    print("=====================================")
-    print("Velocity Cycles Manufacturing Simulator")
-    print("=====================================")
-    print("Current Year: " + str(2026))
-    print("Customer Demand: " + str(55) + "bikes/day")
-    print("Production Capacity: " + str(55) + "bikes/day")
-    print("Current Bottleneck: ______")
-    print("Budget Remaining: $30,000")
-    print("   1. View Factory")
-    print("   2. Modify Factory")
-    print("   3. Invest in Improvements")
-    print("   4. Run Future Simulation")
-    print("   5. View Financial Report")
-    print("   6. Exit")
+    while True:
+        userChoice = None
+        print("=====================================")
+        print("Velocity Cycles Manufacturing Simulator")
+        print("=====================================")
+        print("Current Year: " + str(2026))
+        print("Customer Demand: " + str(55) + " bikes/day")
+        print("Production Capacity: " + str(55) + " bikes/day")
+        print("Current Bottleneck: ______")
+        print("Budget Remaining: $30,000")
+        print("   1. View Factory")
+        print("   2. Modify Factory")
+        print("   3. Invest in Improvements")
+        print("   4. Run Future Simulation")
+        print("   5. View Financial Report")
+        print("   6. Exit")
+
+
+        userChoice = input("Select an option: ")
+        match userChoice:
+            case '1':
+                viewFactory()
+            case '2':
+                modifyFactory()
+            case '3':
+                investImprove()
+            case '4':
+                runSimulation()
+            case '5': 
+                ViewFinancials()
+            case '6': 
+                sys.exit()
+            case _:
+                print("unknown input")
 
 def viewFactory():
-    pass
+    while True:
+        choice = None
+        print("============")
+        print("View Factory")
+        print("============")
+
+        for i, process in enumerate(processes, start=1):
+            print(str(i) + ". " + str(process))
+        print(str(len(processes) + 1) + ". Factory Stats")
+        print(str(len(processes) + 2) + ". Return")
+
+
+        while True:
+            userChoice = input("Choose an option: ")
+
+            try:
+                choice = int(userChoice)
+            except:
+                print("Please enter a number.")
+                continue
+
+            if 1 <= choice <= len(processes) + 2:
+                break
+            else:
+                print("Please choose a valid option.")
+
+        if choice == len(processes) + 2:
+            return()
+        if choice == len(processes) + 1:
+            print(f"Factory Stats:")
+            print(f"   Working Minutes: {workingMinutes}")
+            print(f"   Selling Price: {sellingPrice}")
+            print(f"   Customer Demand: {customerDemand}")
+            print(f"   Current Budget: {currentBudget}")
+            print(f"   System Capacity: {systemCapacity}")
+            print(f"   System Yield: {systemYield}")
+            print(f"   Bottleneck: {bottleneck}")
+            print(f"   Profit Per Bike: {profitPerBike}")
+            print(f"   Daily Profits: {dailyProfit}")
+        else:
+            listOfProcesses = list(processes.keys())
+            selectedProcess = listOfProcesses[choice - 2]
+            print(f"{selectedProcess}:")
+            print(f"   Processing Time: {processes[selectedProcess]['processing time']}")
+            print(f"   Downtime: {processes[selectedProcess]['downtime']}")
+            print(f"   Defect Rate: {processes[selectedProcess]['defect rate']}")
+            print(f"   Daily Capacity: {processes[selectedProcess]['daily']}")
+            print(f"   Process Yield: {processes[selectedProcess]['yield']}")
+            print(f"   Utilization: {processes[selectedProcess]['utilization']}")
+            print(f"   Idle Capacity: {processes[selectedProcess]['idle']}")
+    
+
+
+
+
 
 def modifyFactory():
-    pass
+    print("modifyFactory")
+    createMenu()
 
 def investImprove():
-    pass
+    print("investImprove")
+    createMenu()
 
 def runSimulation():
-    pass
+    print("runSimulation")
+    createMenu()
 
 def ViewFinancials():
-    pass
-
-def exit():
-    pass
+    print("ViewFinancials")
+    createMenu()
 
 
 
 
 
-print(processes)
-print()
 calculateStationCapacity()
-print()
 calculateSystemCapacity()
-print()
 calculateProcessYield()
-print()
 calculateUtilization()
-print()
 calculateIdleCapacity()
-print()
-print(processes)
-print()
 calculateDailyProfit()
-print("daily profit" + str(dailyProfit) + " daily sales" + str(systemYield) + " systemYield " + str(systemYield))
+calculateBottleneck()
 createMenu()
 
 
