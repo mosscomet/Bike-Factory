@@ -87,7 +87,21 @@ def clearConsole():
     else:
         subprocess.run("clear", shell=True)
 
+def updateNumbers():
+    calculateUtilization()
+    calculateIdleCapacity()
+    calculateDailyProfit()
+    calculateBottleneck()
+
+def getInt(prompt):
+    while True:
+        try:
+            return int(input(prompt))
+        except ValueError:
+            print("Please enter a number.")
+
 def createMenu():
+    updateNumbers()
     while True:
         userChoice = None
         print("=====================================")
@@ -125,7 +139,6 @@ def createMenu():
 
 def viewFactory():
     while True:
-        choice = None
         print("============")
         print("View Factory")
         print("============")
@@ -135,6 +148,51 @@ def viewFactory():
         print(str(len(processes) + 1) + ". Factory Stats")
         print(str(len(processes) + 2) + ". Return")
 
+        while True:
+            userChoice = getInt("Choose an option: ")
+
+            if 1 <= userChoice <= len(processes) + 2:
+                break
+            else:
+                print("Please choose a valid option.")
+
+        if userChoice == len(processes) + 2:
+            return()
+        if userChoice == len(processes) + 1:
+            print(f"Factory Stats:")
+            print(f"   Working Minutes: {workingMinutes}")
+            print(f"   Selling Price: {sellingPrice}")
+            print(f"   Customer Demand: {customerDemand}")
+            print(f"   Current Budget: {currentBudget}")
+            print(f"   System Capacity: {systemCapacity}")
+            print(f"   System Yield: {systemYield}")
+            print(f"   Bottleneck: {bottleneck}")
+            print(f"   Profit Per Bike: {profitPerBike}")
+            print(f"   Daily Profits: {dailyProfit}")
+        else:
+            listOfProcesses = list(processes.keys())
+            selectedProcess = listOfProcesses[userChoice - 2]
+            print(f"{selectedProcess}:")
+            print(f"   Processing Time: {processes[selectedProcess]['processing time']}")
+            print(f"   Downtime: {processes[selectedProcess]['downtime']}")
+            print(f"   Defect Rate: {processes[selectedProcess]['defect rate']}")
+            print(f"   Daily Capacity: {processes[selectedProcess]['daily']}")
+            print(f"   Process Yield: {processes[selectedProcess]['yield']}")
+            print(f"   Utilization: {processes[selectedProcess]['utilization']}")
+            print(f"   Idle Capacity: {processes[selectedProcess]['idle']}")
+    
+def modifyFactory():
+    global workingMinutes, sellingPrice, customerDemand, currentBudget, systemCapacity, systemYield, bottleneck, profitPerBike, dailyProfit
+    while True:
+        choice = None
+        print("==============")
+        print("Modify Factory")
+        print("==============")
+
+        for i, process in enumerate(processes, start=1):
+            print(f"   {i}. {process}")
+        print(f"   {len(processes) + 1}. Factory Stats")
+        print(f"   {len(processes) + 2}. Return")
 
         while True:
             userChoice = input("Choose an option: ")
@@ -154,16 +212,37 @@ def viewFactory():
             return()
         if choice == len(processes) + 1:
             print(f"Factory Stats:")
-            print(f"   Working Minutes: {workingMinutes}")
-            print(f"   Selling Price: {sellingPrice}")
-            print(f"   Customer Demand: {customerDemand}")
-            print(f"   Current Budget: {currentBudget}")
-            print(f"   System Capacity: {systemCapacity}")
-            print(f"   System Yield: {systemYield}")
-            print(f"   Bottleneck: {bottleneck}")
-            print(f"   Profit Per Bike: {profitPerBike}")
-            print(f"   Daily Profits: {dailyProfit}")
+            print(f"   1. Working Minutes: {workingMinutes}")
+            print(f"   2. Selling Price: {sellingPrice}")
+            print(f"   3. Customer Demand: {customerDemand}")
+            print(f"   4. Current Budget: {currentBudget}")
+            print(f"   5. Profit Per Bike: {profitPerBike}")
+            print(f"   6. Return")
+            while True:
+                userChoice = input("Choose an option: ")
+                    
+                try:
+                    choice = int(userChoice)
+                except:
+                    print("Please enter a number.")
+                    continue
+
+                match choice:
+                    case 1:
+                        workingMinutes = getInt("Choose new value: ")
+                    case 2:
+                        sellingPrice = getInt("Choose new value: ")
+                    case 3:
+                        customerDemand = getInt("Choose new value: ")
+                    case 4:
+                        currentBudget = getInt("Choose new value: ")
+                    case 5:
+                        profitPerBike = getInt("Choose new value: ")
+                    case 6:
+                        return
+                updateNumbers()   
         else:
+            updateNumbers()
             listOfProcesses = list(processes.keys())
             selectedProcess = listOfProcesses[choice - 2]
             print(f"{selectedProcess}:")
@@ -174,15 +253,6 @@ def viewFactory():
             print(f"   Process Yield: {processes[selectedProcess]['yield']}")
             print(f"   Utilization: {processes[selectedProcess]['utilization']}")
             print(f"   Idle Capacity: {processes[selectedProcess]['idle']}")
-    
-
-
-
-
-
-def modifyFactory():
-    print("modifyFactory")
-    createMenu()
 
 def investImprove():
     print("investImprove")
@@ -200,16 +270,17 @@ def ViewFinancials():
 
 
 
-calculateStationCapacity()
-calculateSystemCapacity()
-calculateProcessYield()
-calculateUtilization()
-calculateIdleCapacity()
-calculateDailyProfit()
-calculateBottleneck()
+
+
+
+
+
+
+
+
+
+
+
+
 createMenu()
-
-
-
-
 
