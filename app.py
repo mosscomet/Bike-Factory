@@ -1,4 +1,4 @@
-import sys, subprocess, platform, copy
+import sys, subprocess, platform, copy, random
 
 defaultProcesses = {
     # Name: {processing time: minutes (int), downtime: minutes (int), defect rate: as a decimal, daily: capacity}
@@ -14,7 +14,7 @@ factoryUpgrades = {
     "Additional Brake Workstation": {"bought":False, "cost":15000, "description": "Brake capacity doubles"},
     "Better Inspection equipment": {"bought":False, "cost":12000, "description": "Inspection time -3 min"},
     "Worker Training": {"bought":False, "cost":8000, "description": "Defects reduced by 40%"},
-    "Conveyor Improvement": {"boug4ht":False, "cost":10000, "description": "Reduce each station processing time by 0.5 min"}
+    "Conveyor Improvement": {"bought":False, "cost":10000, "description": "Reduce each station processing time by 0.5 min"}
 }
 
 factoryAttributes = {
@@ -28,11 +28,24 @@ factoryAttributes = {
     "profitPerBike": 160.0,
     "dailyProfit": 0.0,
     "year": 2026,
+    "annualProfit": 0,
 }
 
 simluationProcesses = {}
 simulationUpgrades = {}
 simulationAttributes = {}
+
+simulationDemandIncrease = 1.05
+simulationBudgetIncrease = 5000
+
+simulationRandomEvents = {
+    "Supplier Delay": "Delays have increased downtime",
+    "Demand Decrease": "Customers want fewer bicycles",
+    "Quality Decrease": "Defect rates increased",
+    "Quality Improvement": "Defect rates decreased",
+    "Equipment Breakdown": "suffers a decrease in production",
+    "Selling Price Changes": "The selling price of bicycles has changed",
+}
 
 def calculateStationCapacity(processes, attributes):
     for i in processes:
@@ -40,6 +53,18 @@ def calculateStationCapacity(processes, attributes):
         capacity = attributes['workingMinutes']/pt
         capacity *= (1-processes[i]["downtime"])
         processes[i]["daily"] = capacity
+
+# # calc only one station at a time
+# def singleStationCapacity(processes, attributes, index):
+#     pt = processes[index]["processing time"]
+#     capacity = attributes['workingMinutes']/pt
+#     capacity *= (1-processes[i]["downtime"])
+#     processes[index]["daily"] = capacity
+
+# # use single station to calc all stations
+# def calculateMultipleStationCapacities(processes, attributes):
+#     for i in processes:
+#         singleStationCapacity(processes, attributes, i)
 
 def calculateSystemCapacity(processes, attributes):
     calculateStationCapacity(processes, attributes)
@@ -74,6 +99,11 @@ def calculateDailyProfit(processes, attributes):
 
     attributes['dailyProfit'] = attributes['systemYield'] * attributes['profitPerBike']
 
+def calculateAnnualProfit(processes, attributes):
+    calculateDailyProfit(processes, attributes)
+
+    attributes['annualProfit'] = attributes['dailyProfit'] * 365
+
 def calculateUtilization(processes, attributes):
     calculateSystemCapacity(processes, attributes)
     
@@ -96,25 +126,24 @@ def clearConsole():
 def updateNumbers(processes, attributes):
     calculateUtilization(processes, attributes)
     calculateIdleCapacity(processes, attributes)
-    calculateDailyProfit(processes, attributes)
+    calculateAnnualProfit(processes, attributes)
     calculateBottleneck(processes, attributes)
 
-def getInt(prompt):
+def validateInt(prompt):
     while True:
         try:
             return int(input(prompt))
         except ValueError:
             print("Please enter a number.")
 
-def getFloat(prompt):
+def validateFloat(prompt):
     while True:
         try:
             return float(input(prompt))
         except ValueError:
             print("Please enter a number.")
 
-
-def createMenu(processes, attributes):
+def createMenu(processes, upgrades, attributes, randomEvents):
     updateNumbers(processes, attributes)
     while True:
         userChoice = None
@@ -134,22 +163,23 @@ def createMenu(processes, attributes):
         print("   6. Exit")
 
 
-        userChoice = getInt("Select an option: ")
+        userChoice = validateInt("Select an option: ")
         match userChoice:
             case 1:
                 viewFactory(processes, attributes)
             case 2:
                 modifyFactory(processes, attributes)
             case 3:
-                investImprove(processes, attributes)
+                investImprove(processes, upgrades, attributes)
             case 4:
-                runSimulation()
+                runSimulation(processes, upgrades, attributes, randomEvents)
             case 5: 
                 ViewFinancials()
             case 6: 
                 sys.exit()
             case _:
                 print("unknown input")
+        clearConsole()
 
 def viewFactory(processes, attributes):
     while True:
@@ -163,7 +193,7 @@ def viewFactory(processes, attributes):
         print(str(len(processes) + 2) + ". Return")
 
         while True:
-            userChoice = getInt("Choose an option: ")
+            userChoice = validateInt("Choose an option: ")
 
             if 1 <= userChoice <= len(processes) + 2:
                 break
@@ -207,7 +237,7 @@ def modifyFactory(processes, attributes):
         print(f"   {len(processes) + 2}. Return")
 
         while True:
-            userChoice = getInt("Choose an option: ")
+            userChoice = validateInt("Choose an option: ")
 
             if 1 <= userChoice <= len(processes) + 2:
                 break
@@ -217,27 +247,27 @@ def modifyFactory(processes, attributes):
         if userChoice == len(processes) + 2:
             return()
         if userChoice == len(processes) + 1:
-            print(f"Factory Stats:")
-            print(f"   1. Working Minutes: {attributes['workingMinutes']}")
-            print(f"   2. Selling Price: {attributes['sellingPrice']}")
-            print(f"   3. Customer Demand: {attributes['customerDemand']}")
-            print(f"   4. Current Budget: {attributes['currentBudget']}")
-            print(f"   5. Profit Per Bike: {attributes['profitPerBike']}")
-            print(f"   6. Return")
             while True:
-                userChoice = getInt("Choose an option: ")
+                print(f"Factory Stats:")
+                print(f"   1. Working Minutes: {attributes['workingMinutes']}")
+                print(f"   2. Selling Price: {attributes['sellingPrice']}")
+                print(f"   3. Customer Demand: {attributes['customerDemand']}")
+                print(f"   4. Current Budget: {attributes['currentBudget']}")
+                print(f"   5. Profit Per Bike: {attributes['profitPerBike']}")
+                print(f"   6. Return")
+                userChoice = validateInt("Choose an option: ")
 
                 match userChoice:
                     case 1:
-                        attributes['workingMinutes'] = getFloat("Choose new value: ")
+                        attributes['workingMinutes'] = validateFloat("Choose new value: ")
                     case 2:
-                        attributes['sellingPrice'] = getFloat("Choose new value: ")
+                        attributes['sellingPrice'] = validateFloat("Choose new value: ")
                     case 3:
-                        attributes['customerDemand'] = getFloat("Choose new value: ")
+                        attributes['customerDemand'] = validateFloat("Choose new value: ")
                     case 4:
-                        attributes['currentBudget'] = getFloat("Choose new value: ")
+                        attributes['currentBudget'] = validateFloat("Choose new value: ")
                     case 5:
-                        attributes['profitPerBike'] = getFloat("Choose new value: ")
+                        attributes['profitPerBike'] = validateFloat("Choose new value: ")
                     case 6:
                         return
                 updateNumbers(processes, attributes)   
@@ -245,59 +275,59 @@ def modifyFactory(processes, attributes):
             updateNumbers(processes, attributes)
             listOfProcesses = list(processes.keys())
             selectedProcess = listOfProcesses[userChoice - 1]
-            print(f"{selectedProcess}:")
-            print(f"   1. Processing Time: {processes[selectedProcess]['processing time']}")
-            print(f"   2. Downtime: {processes[selectedProcess]['downtime']}")
-            print(f"   3. Defect Rate: {processes[selectedProcess]['defect rate']}")
-            print(f"   4. Return")
             while True:
-                userChoice = getInt("Choose an option: ")
+                print(f"{selectedProcess}:")
+                print(f"   1. Processing Time: {processes[selectedProcess]['processing time']}")
+                print(f"   2. Downtime: {processes[selectedProcess]['downtime']}")
+                print(f"   3. Defect Rate: {processes[selectedProcess]['defect rate']}")
+                print(f"   4. Return")
+                userChoice = validateInt("Choose an option: ")
 
                 match userChoice:
                     case 1:
-                        processes[selectedProcess]['processing time'] = getFloat("Choose new value: ")
+                        processes[selectedProcess]['processing time'] = validateFloat("Choose new value: ")
                     case 2:
-                        processes[selectedProcess]['downtime'] = getFloat("Choose new value: ")
+                        processes[selectedProcess]['downtime'] = validateFloat("Choose new value: ")
                     case 3:
-                        processes[selectedProcess]['defect rate'] = getFloat("Choose new value: ")
+                        processes[selectedProcess]['defect rate'] = validateFloat("Choose new value: ")
                     case 4:
                         return
                 updateNumbers(processes, attributes)
 
 
-def investImprove(processes, attributes):
+def investImprove(processes, upgrades, attributes):
     while True:
         print("===============")
         print("Upgrade Factory")
         print("===============")
         print(f"Budget Available: ${attributes['currentBudget']}")
-        for i, upgrade in enumerate(factoryUpgrades, start=1):
-            print(f"   {i}. ${factoryUpgrades[upgrade]['cost']} - {upgrade} - {factoryUpgrades[upgrade]['bought']}")
-        print(f"   {len(factoryUpgrades) + 1}. Return")
+        for i, upgrade in enumerate(upgrades, start=1):
+            print(f"   {i}. ${upgrades[upgrade]['cost']} - {upgrade} - {upgrades[upgrade]['bought']}")
+        print(f"   {len(upgrades) + 1}. Return")
 
         while True:
-            userChoice = getInt("Choose an option: ")
+            userChoice = validateInt("Choose an option: ")
 
-            if 1 <= userChoice <= len(factoryUpgrades) + 1:
+            if 1 <= userChoice <= len(upgrades) + 1:
                 break
             else:
                 print("Please choose a valid option.")
 
-        if userChoice == len(factoryUpgrades) + 1:
+        if userChoice == len(upgrades) + 1:
             return
         else:
-            listOfUpgrades = list(factoryUpgrades.keys())
+            listOfUpgrades = list(upgrades.keys())
             selectedUpgrade = listOfUpgrades[userChoice - 1]
-            print(f"{selectedUpgrade} selected!")
-            print(f"   {factoryUpgrades[selectedUpgrade]['description']}")
+            print(f"{selectedUpgrade} selected:")
+            print(f"   Effect: {upgrades[selectedUpgrade]['description']}")
             print(f"   1. Buy")
             print(f"   2. Do not")
-            userChoice = getInt("Purchase? ")
+            userChoice = validateInt("Purchase? ")
             match userChoice:
                 case 1:
-                    if factoryUpgrades[selectedUpgrade]["cost"] <= attributes['currentBudget'] and factoryUpgrades[selectedUpgrade]["bought"] == False:
-                        attributes['currentBudget'] -= factoryUpgrades[selectedUpgrade]["cost"]
-                        factoryUpgrades[selectedUpgrade]["bought"] = True
+                    if upgrades[selectedUpgrade]['cost'] <= attributes['currentBudget'] and upgrades[selectedUpgrade]['bought'] == False:
+                        attributes['currentBudget'] -= upgrades[selectedUpgrade]['cost']
+                        upgrades[selectedUpgrade]['bought'] = True
                         purchaseUpgrade(selectedUpgrade, processes, attributes)
                 case 2:
                     return
@@ -322,15 +352,81 @@ def purchaseUpgrade(selectedUpgrade, processes, attributes):
                 processes[process]["processing time"] -= 0.5
     updateNumbers(processes, attributes)
 
-def runSimulation():
-    simluationProcesses = copy.deepcopy(defaultProcesses)
-    print("==============")
-    print("Run Simulation")
-    print("==============")
-    # print(f"   Current Year: {year}")
-    # print(f"   Current Budget: {currentBudget}")
-    # print(f"   Current Demand: {customerDemand}")
-    print(f"   1. Option")
+def runSimulation(processes, upgrades, attributes, randomEvents):
+    simluationProcesses = copy.deepcopy(processes)
+    simulationUpgrades = copy.deepcopy(upgrades)
+    simulationAttributes = copy.deepcopy(attributes)
+    
+    while True:
+        print("==============")
+        print("Run Simulation")
+        print("==============")
+        print(f"Year: {simulationAttributes['year']}")
+        print(f"Budget: {simulationAttributes['currentBudget']}")
+        print(f"Annual Profit: ${simulationAttributes['annualProfit']}")
+        print(f"Demand: {simulationAttributes['customerDemand']}")
+        print(f"Production: {simulationAttributes['systemYield']} bikes/day")
+        print(f"Bottleneck: {simulationAttributes['bottleneck']}")
+        print(f"    1. Step forward 1 year")
+        print(f"    2. Upgrade Factory")
+        print(f"    3. Exit")
+        userChoice = validateInt("Select an option: ")
+        match userChoice:
+            case 1:
+                stepForwardOneYear(simulationAttributes)
+                randomEvent(simluationProcesses, simulationUpgrades, simulationAttributes, randomEvents)
+            case 2:
+                investImprove(simluationProcesses, simulationUpgrades, simulationAttributes)
+            case 3: 
+                return
+
+def stepForwardOneYear(attributes):
+    print(f"Customer Demand Increase: {attributes['customerDemand']} -> {attributes['customerDemand'] * simulationDemandIncrease}")
+    attributes['customerDemand'] *= simulationDemandIncrease
+    print(f"Budget Increase: {attributes['currentBudget']} -> {attributes['currentBudget'] + simulationBudgetIncrease}")
+    attributes['currentBudget'] += simulationBudgetIncrease
+    attributes['year'] += 1
+
+def randomEvent(processes, upgrades, attributes, randomEvents):
+    event = random.choice(list(simulationRandomEvents.keys()))
+    match event:
+        case "Supplier Delay":
+            downtime = random.uniform(0.01, 0.05)
+            for i in processes:
+                if processes[i]['defect rate'] + downtime < 1:
+                    processes[i]['defect rate'] += downtime
+                processes[i]['downtime'] += downtime
+            print(f"Supplier Delay: {randomEvents[event]}, +{round(downtime,5)*100}% on all stations")
+        case "Demand Decrease":
+            demandDec = random.randint(1, 10)
+            attributes['customerDemand'] -= demandDec
+            print(f"Demand Decrease: {randomEvents[event]}, -{demandDec} demand")
+        case "Quality Decrease":
+            defect = random.uniform(0.01, 0.03)
+            for i in processes:
+                if processes[i]['defect rate'] + defect < 1:
+                    processes[i]['defect rate'] += defect
+            print(f"Quality Decrease: {randomEvents[event]}, +{round(defect,5)*100}% error on all stations")
+        case "Quality Improvement":
+            defect = random.uniform(0.01, 0.03)
+            for i in processes:
+                if processes[i]['downtime'] > defect:
+                    processes[i]['downtime'] -= defect
+            print(f"Quality Decrease: {randomEvents[event]}, -{round(defect,5)*100}% error on all stations")
+        case "Equipment Breakdown":
+            mult = random.uniform(0.6, 1.00)
+            station = random.choice(list(processes.keys()))
+            processes[station]['downtime'] *= mult
+            print(f"Equipment Breakdown: {station} {randomEvents[event]}, -{round((1-mult),5)*100}% decrease in capacity")
+        case "Selling Price Changes":
+            change = random.randint(-10,10)
+            attributes['profitPerBike'] += change
+            if change > 0:
+                print(f"Selling Price Changes: {randomEvents[event]}, ${change} increase")
+            else:
+                print(f"Selling Price Changes: {randomEvents[event]}, ${abs(change)} decrease")
+    updateNumbers(processes, attributes)
+    calculateBottleneck(processes, attributes)
 
 def ViewFinancials():
     print("ViewFinancials")
@@ -342,10 +438,5 @@ def ViewFinancials():
 
 
 
-
-
-
-
-
-createMenu(defaultProcesses, factoryAttributes)
+createMenu(defaultProcesses, factoryUpgrades, factoryAttributes, simulationRandomEvents)
 
