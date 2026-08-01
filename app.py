@@ -1,6 +1,6 @@
-import sys, subprocess, platform
+import sys, subprocess, platform, copy
 
-processes = {
+defaultProcesses = {
     # Name: {processing time: minutes (int), downtime: minutes (int), defect rate: as a decimal, daily: capacity}
     "Frame Assembly":       {"processing time":8.0, "downtime":0.0, "defect rate":0.01, "daily":0.0, "yield":0.0, "utilization": 0.0, "idle":0.0},
     "Wheel Installation":   {"processing time":12.0, "downtime":0.05, "defect rate":0.03, "daily":0.0, "yield":0.0, "utilization": 0.0, "idle":0.0},
@@ -14,40 +14,44 @@ factoryUpgrades = {
     "Additional Brake Workstation": {"bought":False, "cost":15000, "description": "Brake capacity doubles"},
     "Better Inspection equipment": {"bought":False, "cost":12000, "description": "Inspection time -3 min"},
     "Worker Training": {"bought":False, "cost":8000, "description": "Defects reduced by 40%"},
-    "Conveyor Improvement": {"bought":False, "cost":10000, "description": "Reduce each station processing time by 0.5 min"}
+    "Conveyor Improvement": {"boug4ht":False, "cost":10000, "description": "Reduce each station processing time by 0.5 min"}
 }
 
-workingMinutes = 480.0
-sellingPrice = 160.0
-customerDemand = 55.0
-currentBudget = 30000.0
-systemCapacity = 0.0
-systemYield = 0.0
-bottleneck = ""
-profitPerBike = 160.0
-dailyProfit = 0.0
+factoryAttributes = {
+    "workingMinutes": 480.0,
+    "sellingPrice": 160.0,
+    "customerDemand": 55.0,
+    "currentBudget": 30000.0,
+    "systemCapacity": 0.0,
+    "systemYield": 0.0,
+    "bottleneck": "",
+    "profitPerBike": 160.0,
+    "dailyProfit": 0.0,
+    "year": 2026,
+}
 
+simluationProcesses = {}
+simulationUpgrades = {}
+simulationAttributes = {}
 
-def calculateStationCapacity():
+def calculateStationCapacity(processes, attributes):
     for i in processes:
         pt = processes[i]["processing time"]
-        capacity = workingMinutes/pt
+        capacity = attributes['workingMinutes']/pt
         capacity *= (1-processes[i]["downtime"])
         processes[i]["daily"] = capacity
 
-def calculateSystemCapacity():
-    global systemCapacity
-    calculateStationCapacity()
+def calculateSystemCapacity(processes, attributes):
+    calculateStationCapacity(processes, attributes)
 
     tempSysCap = float('inf')
     for i in processes:
         if processes[i]["daily"] < tempSysCap:
             tempSysCap = processes[i]["daily"]
-    systemCapacity = tempSysCap
+    attributes['systemCapacity'] = tempSysCap
 
-def calculateProcessYield():
-    global systemYield
-    calculateSystemCapacity()
+def calculateProcessYield(processes, attributes):
+    calculateSystemCapacity(processes, attributes)
 
     productionMultiplier = 1.0
     individualProductionMultipler = 1.0
@@ -56,38 +60,32 @@ def calculateProcessYield():
         individualProductionMultipler = 1 * (1-processes[i]["defect rate"]) * (1-processes[i]["downtime"])
         processes[i]["yield"] = processes[i]["daily"] * individualProductionMultipler
         individualProductionMultipler = 1.0
-    # print(f"syscap {systemCapacity}")
-    # print(f"productionMultiplier {productionMultiplier}")
-    systemYield = systemCapacity * productionMultiplier
+    attributes['systemYield'] = attributes['systemCapacity'] * productionMultiplier
     
-def calculateBottleneck():
-    global bottleneck
-    calculateSystemCapacity()
-    listOfProcesses = list(processes.keys())
+def calculateBottleneck(processes, attributes):
+    calculateSystemCapacity(processes, attributes)
 
     for processName in processes:
-        if processes[processName]["daily"] <= systemCapacity:
-            bottleneck = processName
-            break
+        if processes[processName]["daily"] <= attributes['systemCapacity']:
+            attributes['bottleneck'] = processName
 
-def calculateDailyProfit():
-    global dailyProfit
-    calculateProcessYield()
+def calculateDailyProfit(processes, attributes):
+    calculateProcessYield(processes, attributes)
 
-    dailyProfit = systemYield * profitPerBike
+    attributes['dailyProfit'] = attributes['systemYield'] * attributes['profitPerBike']
 
-def calculateUtilization():
-    calculateSystemCapacity()
+def calculateUtilization(processes, attributes):
+    calculateSystemCapacity(processes, attributes)
     
     for i in processes:
-        processes[i]["utilization"] = systemCapacity/processes[i]["daily"]
+        processes[i]["utilization"] = attributes['systemCapacity']/processes[i]["daily"]
 
 
-def calculateIdleCapacity():
-    calculateSystemCapacity()
+def calculateIdleCapacity(processes,attributes):
+    calculateSystemCapacity(processes,attributes)
 
     for i in processes:
-        processes[i]["idle"] = processes[i]["daily"]-systemCapacity
+        processes[i]["idle"] = processes[i]["daily"] - attributes['systemCapacity']
 
 def clearConsole():
     if platform.system() == "Windows":
@@ -95,11 +93,11 @@ def clearConsole():
     else:
         subprocess.run("clear", shell=True)
 
-def updateNumbers():
-    calculateUtilization()
-    calculateIdleCapacity()
-    calculateDailyProfit()
-    calculateBottleneck()
+def updateNumbers(processes, attributes):
+    calculateUtilization(processes, attributes)
+    calculateIdleCapacity(processes, attributes)
+    calculateDailyProfit(processes, attributes)
+    calculateBottleneck(processes, attributes)
 
 def getInt(prompt):
     while True:
@@ -116,18 +114,18 @@ def getFloat(prompt):
             print("Please enter a number.")
 
 
-def createMenu():
-    updateNumbers()
+def createMenu(processes, attributes):
+    updateNumbers(processes, attributes)
     while True:
         userChoice = None
         print("=====================================")
         print("Velocity Cycles Manufacturing Simulator")
         print("=====================================")
-        print("Current Year: " + str(2026))
-        print("Customer Demand: " + str(55) + " bikes/day")
-        print("Production Capacity: " + str(55) + " bikes/day")
-        print("Current Bottleneck: ______")
-        print("Budget Remaining: $30,000")
+        print(f"Current Year: {attributes['year']}")
+        print(f"Customer Demand: {attributes['customerDemand']} bikes/day")
+        print(f"Production: {attributes['systemYield']} bikes/day")
+        print(f"Current Bottleneck: {attributes['bottleneck']}")
+        print(f"Budget Remaining: ${attributes['currentBudget']}")
         print("   1. View Factory")
         print("   2. Modify Factory")
         print("   3. Invest in Improvements")
@@ -139,11 +137,11 @@ def createMenu():
         userChoice = getInt("Select an option: ")
         match userChoice:
             case 1:
-                viewFactory()
+                viewFactory(processes, attributes)
             case 2:
-                modifyFactory()
+                modifyFactory(processes, attributes)
             case 3:
-                investImprove()
+                investImprove(processes, attributes)
             case 4:
                 runSimulation()
             case 5: 
@@ -153,7 +151,7 @@ def createMenu():
             case _:
                 print("unknown input")
 
-def viewFactory():
+def viewFactory(processes, attributes):
     while True:
         print("============")
         print("View Factory")
@@ -175,15 +173,15 @@ def viewFactory():
             return()
         if userChoice == len(processes) + 1:
             print(f"Factory Stats:")
-            print(f"   Working Minutes: {workingMinutes}")
-            print(f"   Selling Price: {sellingPrice}")
-            print(f"   Customer Demand: {customerDemand}")
-            print(f"   Current Budget: {currentBudget}")
-            print(f"   System Capacity: {systemCapacity}")
-            print(f"   System Yield: {systemYield}")
-            print(f"   Bottleneck: {bottleneck}")
-            print(f"   Profit Per Bike: {profitPerBike}")
-            print(f"   Daily Profits: {dailyProfit}")
+            print(f"   Working Minutes: {attributes['workingMinutes']}")
+            print(f"   Selling Price: {attributes['sellingPrice']}")
+            print(f"   Customer Demand: {attributes['customerDemand']}")
+            print(f"   Current Budget: {attributes['currentBudget']}")
+            print(f"   System Capacity: {attributes['systemCapacity']}")
+            print(f"   System Yield: {attributes['systemYield']}")
+            print(f"   Bottleneck: {attributes['bottleneck']}")
+            print(f"   Profit Per Bike: {attributes['profitPerBike']}")
+            print(f"   Daily Profits: {attributes['dailyProfit']}")
         else:
             listOfProcesses = list(processes.keys())
             selectedProcess = listOfProcesses[userChoice - 2]
@@ -196,8 +194,7 @@ def viewFactory():
             print(f"   Utilization: {processes[selectedProcess]['utilization']}")
             print(f"   Idle Capacity: {processes[selectedProcess]['idle']}")
     
-def modifyFactory():
-    global workingMinutes, sellingPrice, customerDemand, currentBudget, systemCapacity, systemYield, bottleneck, profitPerBike, dailyProfit
+def modifyFactory(processes, attributes):
     while True:
         choice = None
         print("==============")
@@ -221,31 +218,31 @@ def modifyFactory():
             return()
         if userChoice == len(processes) + 1:
             print(f"Factory Stats:")
-            print(f"   1. Working Minutes: {workingMinutes}")
-            print(f"   2. Selling Price: {sellingPrice}")
-            print(f"   3. Customer Demand: {customerDemand}")
-            print(f"   4. Current Budget: {currentBudget}")
-            print(f"   5. Profit Per Bike: {profitPerBike}")
+            print(f"   1. Working Minutes: {attributes['workingMinutes']}")
+            print(f"   2. Selling Price: {attributes['sellingPrice']}")
+            print(f"   3. Customer Demand: {attributes['customerDemand']}")
+            print(f"   4. Current Budget: {attributes['currentBudget']}")
+            print(f"   5. Profit Per Bike: {attributes['profitPerBike']}")
             print(f"   6. Return")
             while True:
                 userChoice = getInt("Choose an option: ")
 
                 match userChoice:
                     case 1:
-                        workingMinutes = getFloat("Choose new value: ")
+                        attributes['workingMinutes'] = getFloat("Choose new value: ")
                     case 2:
-                        sellingPrice = getFloat("Choose new value: ")
+                        attributes['sellingPrice'] = getFloat("Choose new value: ")
                     case 3:
-                        customerDemand = getFloat("Choose new value: ")
+                        attributes['customerDemand'] = getFloat("Choose new value: ")
                     case 4:
-                        currentBudget = getFloat("Choose new value: ")
+                        attributes['currentBudget'] = getFloat("Choose new value: ")
                     case 5:
-                        profitPerBike = getFloat("Choose new value: ")
+                        attributes['profitPerBike'] = getFloat("Choose new value: ")
                     case 6:
                         return
-                updateNumbers()   
+                updateNumbers(processes, attributes)   
         else:
-            updateNumbers()
+            updateNumbers(processes, attributes)
             listOfProcesses = list(processes.keys())
             selectedProcess = listOfProcesses[userChoice - 1]
             print(f"{selectedProcess}:")
@@ -265,16 +262,15 @@ def modifyFactory():
                         processes[selectedProcess]['defect rate'] = getFloat("Choose new value: ")
                     case 4:
                         return
-                updateNumbers()
+                updateNumbers(processes, attributes)
 
 
-def investImprove():
-    global currentBudget
+def investImprove(processes, attributes):
     while True:
         print("===============")
         print("Upgrade Factory")
         print("===============")
-        print(f"Budget Available: ${currentBudget}")
+        print(f"Budget Available: ${attributes['currentBudget']}")
         for i, upgrade in enumerate(factoryUpgrades, start=1):
             print(f"   {i}. ${factoryUpgrades[upgrade]['cost']} - {upgrade} - {factoryUpgrades[upgrade]['bought']}")
         print(f"   {len(factoryUpgrades) + 1}. Return")
@@ -299,39 +295,42 @@ def investImprove():
             userChoice = getInt("Purchase? ")
             match userChoice:
                 case 1:
-                    if factoryUpgrades[selectedUpgrade]["cost"] <= currentBudget and factoryUpgrades[selectedUpgrade]["bought"] == False:
-                        currentBudget -= factoryUpgrades[selectedUpgrade]["cost"]
+                    if factoryUpgrades[selectedUpgrade]["cost"] <= attributes['currentBudget'] and factoryUpgrades[selectedUpgrade]["bought"] == False:
+                        attributes['currentBudget'] -= factoryUpgrades[selectedUpgrade]["cost"]
                         factoryUpgrades[selectedUpgrade]["bought"] = True
-                        purchaseUpgrade(selectedUpgrade)
+                        purchaseUpgrade(selectedUpgrade, processes, attributes)
                 case 2:
                     return
-            updateNumbers()
+            updateNumbers(processes, attributes)
 
-def purchaseUpgrade(selectedUpgrade):
+def purchaseUpgrade(selectedUpgrade, processes, attributes):
     print(selectedUpgrade)
     if selectedUpgrade == "Faster Wheel Equipment":
         if processes["Wheel Installation"]["processing time"] > 4:
             processes["Wheel Installation"]["processing time"] -= 4
-            updateNumbers()
     elif selectedUpgrade == "Additional Brake Workstation":
         processes[selectedUpgrade]["processing time"] /= 2
-        updateNumbers()
     elif selectedUpgrade == "Better Inspection equipment":
         if processes["Brake Installation"]["processing time"] > 3:
             processes["Brake Installation"]["processing time"] -= 3
-            updateNumbers()
     elif selectedUpgrade == "Worker Training":
         for process in processes:
             processes[process]["defect rate"] *= 0.6
-            updateNumbers()
     elif selectedUpgrade == "Conveyor Improvement":
         for process in processes:
             if processes[process]["processing time"] > 0.5:
                 processes[process]["processing time"] -= 0.5
-        updateNumbers()
+    updateNumbers(processes, attributes)
 
 def runSimulation():
-    print("runSimulation")
+    simluationProcesses = copy.deepcopy(defaultProcesses)
+    print("==============")
+    print("Run Simulation")
+    print("==============")
+    # print(f"   Current Year: {year}")
+    # print(f"   Current Budget: {currentBudget}")
+    # print(f"   Current Demand: {customerDemand}")
+    print(f"   1. Option")
 
 def ViewFinancials():
     print("ViewFinancials")
@@ -348,9 +347,5 @@ def ViewFinancials():
 
 
 
-
-
-
-
-createMenu()
+createMenu(defaultProcesses, factoryAttributes)
 
