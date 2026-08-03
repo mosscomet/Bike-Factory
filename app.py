@@ -41,8 +41,8 @@ simulationBudgetIncrease = 5000
 simulationRandomEvents = {
     "Supplier Delay": "Delays have increased downtime",
     "Demand Decrease": "Customers want fewer bicycles",
-    "Quality Decrease": "Defect rates increased",
-    "Quality Improvement": "Defect rates decreased",
+    "Quality Decrease": "Defect rates have gone up",
+    "Quality Improvement": "Defect rates have gone down",
     "Equipment Breakdown": "suffers a decrease in production",
     "Selling Price Changes": "The selling price of bicycles has changed",
 }
@@ -147,14 +147,15 @@ def createMenu(processes, upgrades, attributes, randomEvents):
     updateNumbers(processes, attributes)
     while True:
         userChoice = None
-        print("=====================================")
+        print("\n=======================================")
         print("Velocity Cycles Manufacturing Simulator")
-        print("=====================================")
+        print("=======================================")
         print(f"Current Year: {attributes['year']}")
         print(f"Customer Demand: {attributes['customerDemand']} bikes/day")
         print(f"Production: {attributes['systemYield']} bikes/day")
         print(f"Current Bottleneck: {attributes['bottleneck']}")
         print(f"Budget Remaining: ${attributes['currentBudget']}")
+        recommendUpgrade(processes, upgrades, attributes)
         print("   1. View Factory")
         print("   2. Modify Factory")
         print("   3. Invest in Improvements")
@@ -174,7 +175,7 @@ def createMenu(processes, upgrades, attributes, randomEvents):
             case 4:
                 runSimulation(processes, upgrades, attributes, randomEvents)
             case 5: 
-                ViewFinancials()
+                viewFinancials(attributes)
             case 6: 
                 sys.exit()
             case _:
@@ -183,7 +184,7 @@ def createMenu(processes, upgrades, attributes, randomEvents):
 
 def viewFactory(processes, attributes):
     while True:
-        print("============")
+        print("\n============")
         print("View Factory")
         print("============")
 
@@ -226,8 +227,7 @@ def viewFactory(processes, attributes):
     
 def modifyFactory(processes, attributes):
     while True:
-        choice = None
-        print("==============")
+        print("\n==============")
         print("Modify Factory")
         print("==============")
 
@@ -297,7 +297,7 @@ def modifyFactory(processes, attributes):
 
 def investImprove(processes, upgrades, attributes):
     while True:
-        print("===============")
+        print("\n===============")
         print("Upgrade Factory")
         print("===============")
         print(f"Budget Available: ${attributes['currentBudget']}")
@@ -326,30 +326,42 @@ def investImprove(processes, upgrades, attributes):
             match userChoice:
                 case 1:
                     if upgrades[selectedUpgrade]['cost'] <= attributes['currentBudget'] and upgrades[selectedUpgrade]['bought'] == False:
-                        attributes['currentBudget'] -= upgrades[selectedUpgrade]['cost']
-                        upgrades[selectedUpgrade]['bought'] = True
-                        purchaseUpgrade(selectedUpgrade, processes, attributes)
+                        purchaseUpgrade(selectedUpgrade, processes, upgrades, attributes)
                 case 2:
                     return
             updateNumbers(processes, attributes)
 
-def purchaseUpgrade(selectedUpgrade, processes, attributes):
-    print(selectedUpgrade)
+def purchaseUpgrade(selectedUpgrade, processes, upgrades, attributes):
     if selectedUpgrade == "Faster Wheel Equipment":
         if processes["Wheel Installation"]["processing time"] > 4:
             processes["Wheel Installation"]["processing time"] -= 4
+            attributes['currentBudget'] -= upgrades[selectedUpgrade]['cost']
+            upgrades[selectedUpgrade]['bought'] = True
+    
     elif selectedUpgrade == "Additional Brake Workstation":
-        processes[selectedUpgrade]["processing time"] /= 2
+        processes["Brake Installation"]["processing time"] /= 2
+        attributes['currentBudget'] -= upgrades[selectedUpgrade]['cost']
+        upgrades[selectedUpgrade]['bought'] = True
+    
     elif selectedUpgrade == "Better Inspection equipment":
         if processes["Brake Installation"]["processing time"] > 3:
             processes["Brake Installation"]["processing time"] -= 3
+            attributes['currentBudget'] -= upgrades[selectedUpgrade]['cost']
+            upgrades[selectedUpgrade]['bought'] = True
+    
     elif selectedUpgrade == "Worker Training":
         for process in processes:
             processes[process]["defect rate"] *= 0.6
+        attributes['currentBudget'] -= upgrades[selectedUpgrade]['cost']
+        upgrades[selectedUpgrade]['bought'] = True
+    
     elif selectedUpgrade == "Conveyor Improvement":
         for process in processes:
             if processes[process]["processing time"] > 0.5:
                 processes[process]["processing time"] -= 0.5
+        attributes['currentBudget'] -= upgrades[selectedUpgrade]['cost']
+        upgrades[selectedUpgrade]['bought'] = True
+    
     updateNumbers(processes, attributes)
 
 def runSimulation(processes, upgrades, attributes, randomEvents):
@@ -358,7 +370,7 @@ def runSimulation(processes, upgrades, attributes, randomEvents):
     simulationAttributes = copy.deepcopy(attributes)
     
     while True:
-        print("==============")
+        print("\n==============")
         print("Run Simulation")
         print("==============")
         print(f"Year: {simulationAttributes['year']}")
@@ -367,6 +379,7 @@ def runSimulation(processes, upgrades, attributes, randomEvents):
         print(f"Demand: {simulationAttributes['customerDemand']}")
         print(f"Production: {simulationAttributes['systemYield']} bikes/day")
         print(f"Bottleneck: {simulationAttributes['bottleneck']}")
+        recommendUpgrade(simluationProcesses, simulationUpgrades, simulationAttributes)
         print(f"    1. Step forward 1 year")
         print(f"    2. Upgrade Factory")
         print(f"    3. Exit")
@@ -379,6 +392,7 @@ def runSimulation(processes, upgrades, attributes, randomEvents):
                 investImprove(simluationProcesses, simulationUpgrades, simulationAttributes)
             case 3: 
                 return
+        
 
 def stepForwardOneYear(attributes):
     print(f"Customer Demand Increase: {attributes['customerDemand']} -> {attributes['customerDemand'] * simulationDemandIncrease}")
@@ -386,9 +400,12 @@ def stepForwardOneYear(attributes):
     print(f"Budget Increase: {attributes['currentBudget']} -> {attributes['currentBudget'] + simulationBudgetIncrease}")
     attributes['currentBudget'] += simulationBudgetIncrease
     attributes['year'] += 1
+    viewFinancials(attributes)
+    
 
 def randomEvent(processes, upgrades, attributes, randomEvents):
     event = random.choice(list(simulationRandomEvents.keys()))
+    print(f"\n===Random Event===")
     match event:
         case "Supplier Delay":
             downtime = random.uniform(0.01, 0.05)
@@ -397,27 +414,34 @@ def randomEvent(processes, upgrades, attributes, randomEvents):
                     processes[i]['defect rate'] += downtime
                 processes[i]['downtime'] += downtime
             print(f"Supplier Delay: {randomEvents[event]}, +{round(downtime,5)*100}% on all stations")
+
         case "Demand Decrease":
             demandDec = random.randint(1, 10)
             attributes['customerDemand'] -= demandDec
             print(f"Demand Decrease: {randomEvents[event]}, -{demandDec} demand")
+
         case "Quality Decrease":
             defect = random.uniform(0.01, 0.03)
             for i in processes:
                 if processes[i]['defect rate'] + defect < 1:
                     processes[i]['defect rate'] += defect
             print(f"Quality Decrease: {randomEvents[event]}, +{round(defect,5)*100}% error on all stations")
+
         case "Quality Improvement":
             defect = random.uniform(0.01, 0.03)
+            if upgrades["Worker Training"]["bought"]:
+                defect *= 0.6
             for i in processes:
                 if processes[i]['downtime'] > defect:
                     processes[i]['downtime'] -= defect
-            print(f"Quality Decrease: {randomEvents[event]}, -{round(defect,5)*100}% error on all stations")
+            print(f"Quality Increase: {randomEvents[event]}, -{round(defect,5)*100}% error on all stations")
+
         case "Equipment Breakdown":
-            mult = random.uniform(0.6, 1.00)
+            mult = random.uniform(0.7, 1.00)
             station = random.choice(list(processes.keys()))
             processes[station]['downtime'] *= mult
             print(f"Equipment Breakdown: {station} {randomEvents[event]}, -{round((1-mult),5)*100}% decrease in capacity")
+
         case "Selling Price Changes":
             change = random.randint(-10,10)
             attributes['profitPerBike'] += change
@@ -425,18 +449,51 @@ def randomEvent(processes, upgrades, attributes, randomEvents):
                 print(f"Selling Price Changes: {randomEvents[event]}, ${change} increase")
             else:
                 print(f"Selling Price Changes: {randomEvents[event]}, ${abs(change)} decrease")
+            
     updateNumbers(processes, attributes)
     calculateBottleneck(processes, attributes)
 
-def ViewFinancials():
-    print("ViewFinancials")
+def viewFinancials(attributes):
+    print("\n===============")
+    print("View Financials")
+    print("===============")
+    print(f"Production Capacity: {attributes['systemCapacity']}")
+    print(f"Good Bicycles Produced: {attributes['systemYield']}")
+    print(f"Daily Profit: {attributes['dailyProfit']}")
+    print(f"Annual Profit: {attributes['annualProfit']}")
+    print(f"Budget Remaining: {attributes['currentBudget']}")
+    print(f"Bottleneck: {attributes['bottleneck']}")
+    if attributes['customerDemand'] > attributes['systemYield']: # Lost Sales:
+        print(f"Remaining Potential Sales: {attributes['customerDemand']-attributes['systemYield']}")
+    else:
+        print(f"Remaining Potential Sales: 0")
+    print(f"    1. Return")
+    userChoice = validateInt("Select an option: ")
+    match userChoice:
+        case 1:
+            return
+    
+def recommendUpgrade(processes, upgrades, attributes):
+    currentProfit = attributes["dailyProfit"]
+    bestGain = 0
+    bestChoice = None
 
+    for upgrade in upgrades:
+        if upgrades[upgrade]["bought"] == False and upgrades[upgrade]["cost"] <= attributes["currentBudget"]:
 
+            testProcesses = copy.deepcopy(processes)
+            testUpgrades = copy.deepcopy(upgrades)
+            testAttributes = copy.deepcopy(attributes)
 
-
-
+            purchaseUpgrade(upgrade, testProcesses, testUpgrades, testAttributes)
+            updateNumbers(testProcesses, testAttributes)
+            gain = testAttributes["dailyProfit"] - currentProfit
+            if gain > bestGain:
+                bestGain = gain
+                bestChoice = upgrade
+    print(f"Recommended Upgrade: {bestChoice}")
+    print(f"Recommended Upgrade Daily Profit Increase: ${bestGain}")
 
 
 
 createMenu(defaultProcesses, factoryUpgrades, factoryAttributes, simulationRandomEvents)
-
