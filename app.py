@@ -42,7 +42,7 @@ simulationRandomEvents = {
     "Demand Decrease": "Customers want fewer bicycles",
     "Quality Decrease": "Defect rates have gone up",
     "Quality Improvement": "Defect rates have gone down",
-    "Equipment Breakdown": "suffers a decrease in production",
+    "Equipment Breakdown": "suffers an increase in processing time",
     "Selling Price Changes": "The selling price of bicycles has changed",
 }
 
@@ -443,10 +443,10 @@ def randomEvent(processes, upgrades, attributes, randomEvents):
             print(f"Quality Increase: {randomEvents[event]}, -{round(defect,5)*100}% error on all stations")
 
         case "Equipment Breakdown":
-            mult = random.uniform(0.8, 1.00)
+            mult = random.uniform(1, 1.05)
             station = random.choice(list(processes.keys()))
-            processes[station]['downtime'] *= mult
-            print(f"Equipment Breakdown: {station} {randomEvents[event]}, -{round((1-mult),5)*100}% decrease in capacity")
+            processes[station]['processing time'] *= mult
+            print(f"Equipment Breakdown: {station} {randomEvents[event]}, {round((mult-1),5)*100}% increase in processing time")
 
         case "Selling Price Changes":
             change = random.randint(-10,10)
@@ -455,7 +455,7 @@ def randomEvent(processes, upgrades, attributes, randomEvents):
                 print(f"Selling Price Changes: {randomEvents[event]}, ${change} increase")
             else:
                 print(f"Selling Price Changes: {randomEvents[event]}, ${abs(change)} decrease")
-            
+    
     updateNumbers(processes, attributes)
     calculateBottleneck(processes, attributes)
 
